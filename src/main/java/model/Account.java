@@ -1,6 +1,6 @@
 package model;
 
-import util.constant.UserStatus;
+import util.constant.AccountStatus;
 
 import java.math.BigDecimal;
 
@@ -10,14 +10,14 @@ public class Account {
     private Integer userId;
     private String accountNumber;
     private BigDecimal balance;
-    private UserStatus status;
+    private AccountStatus status;
     private BigDecimal dailyTransferLimit;
     private BigDecimal dailyTransferUsed;
 
     public Account() {
     }
 
-    public Account(Integer id, Integer userId, String accountNumber, BigDecimal balance, UserStatus status, BigDecimal dailyTransferLimit, BigDecimal dailyTransferUsed) {
+    public Account(Integer id, Integer userId, String accountNumber, BigDecimal balance, AccountStatus status, BigDecimal dailyTransferLimit, BigDecimal dailyTransferUsed) {
         this.id = id;
         this.userId = userId;
         this.accountNumber = accountNumber;
@@ -39,8 +39,8 @@ public class Account {
     public BigDecimal getBalance() { return balance; }
     public void setBalance(BigDecimal balance) { this.balance = balance; }
 
-    public UserStatus getStatus() { return status; }
-    public void setStatus(UserStatus status) { this.status = status; }
+    public AccountStatus getStatus() { return status; }
+    public void setStatus(AccountStatus status) { this.status = status; }
 
     public BigDecimal getDailyTransferLimit() { return dailyTransferLimit; }
     public void setDailyTransferLimit(BigDecimal dailyTransferLimit) { this.dailyTransferLimit = dailyTransferLimit; }
