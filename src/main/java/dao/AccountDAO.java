@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AccountDAO {
-        void create(Account account);
+        Account insert(Account account);
         Optional<Account> findById(int id);
         Optional<Account> findByUserId(int userId);
         Optional<Account> findByAccountNumber(String accountNumber);
