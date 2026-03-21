@@ -1,5 +1,5 @@
 package util.constant;
 
-public enum UserStatus {
+public enum AccountStatus {
     ACTIVE, LOCKED, CLOSED
 }

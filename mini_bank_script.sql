@@ -17,7 +17,8 @@ create table accounts(
                          balance decimal(15,2) default 0.00,
                          status varchar(20) default 'ACTIVE', -- ACTIVE, LOCKED, CLOSED
                          daily_transfer_limit DECIMAL(15, 2) DEFAULT 50000000,
-                         daily_transfer_used DECIMAL(15, 2) DEFAULT 0.00
+                         daily_transfer_used DECIMAL(15, 2) DEFAULT 0.00,
+                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE transactions (
