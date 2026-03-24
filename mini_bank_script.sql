@@ -46,4 +46,4 @@ alter table transactions
 alter table transactions
     add constraint FK_Transactions_Receiver
         foreign key (receiver_account_id)
-            references users (id);
+            references accounts (id);
