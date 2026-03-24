@@ -117,7 +117,7 @@ public class TransactionDAOTest {
     @Test
     @Order(4)
     void testFindByReceiverId() {
-        List<Transaction> transactions = transactionDAO.findByReceiverId(senderAcc.getId());
+        List<Transaction> transactions = transactionDAO.findByReceiverId(receiverAcc.getId());
         assertFalse(transactions.isEmpty());
         assertEquals(testTransaction.getId(), transactions.getFirst().getId());
     }
