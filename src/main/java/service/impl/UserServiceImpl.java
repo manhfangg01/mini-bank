@@ -4,6 +4,7 @@ import config.DBConnection;
 import dao.UserDAO;
 import dao.impl.UserDAOImpl;
 import model.User;
+import model.UserSession;
 import service.UserService;
 import util.PasswordUtil;
 
@@ -13,7 +14,6 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 public class UserServiceImpl implements UserService {
-    private User currentUser;
 
     @Override
     public void register(String username, String password, String fullName) {
@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
             Optional<User> userOpt = userDAO.findByUsername(username);
 
             if (userOpt.isPresent() && PasswordUtil.checkPassword(password, userOpt.get().getPasswordHash())) {
-                this.currentUser = userOpt.get();
+                UserSession.login(userOpt.get());
                 return "SUCCESS";
             }
             return "FAILED";
@@ -68,18 +68,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void logout() {
-        this.currentUser = null;
+        UserSession.logout();
         System.out.println("Log out successfully!");
     }
 
     @Override
-    public Optional<User> getCurrentUser() {
-        return Optional.ofNullable(currentUser);
-    }
-
-    @Override
     public void changePassword(String oldPassword, String newPassword) {
-        if (currentUser == null) throw new RuntimeException("You're not logged in!");
+        User currentUser = UserSession.getCurrentUser();
+
+        if (!UserSession.isLoggedIn()) throw new RuntimeException("You're not logged in!");
 
         try (Connection conn = DBConnection.getConnection()) {
             UserDAO userDAO = new UserDAOImpl(conn);
@@ -95,6 +92,11 @@ public class UserServiceImpl implements UserService {
         } catch (SQLException e) {
             throw new RuntimeException("Error during password change", e);
         }
+    }
+
+    @Override
+    public Optional<User> getCurrentUser() {
+        return Optional.ofNullable(UserSession.getCurrentUser());
     }
 
     private void closeConnection(Connection conn) {

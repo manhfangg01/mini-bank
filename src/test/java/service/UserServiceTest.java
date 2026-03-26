@@ -4,6 +4,7 @@ import config.DBConnection;
 import dao.UserDAO;
 import dao.impl.UserDAOImpl;
 import model.User;
+import model.UserSession;
 import org.junit.jupiter.api.*;
 import service.impl.UserServiceImpl;
 
@@ -70,16 +71,33 @@ public class UserServiceTest {
         String result = userService.login(username, "123456");
 
         assertEquals("SUCCESS", result);
-        assertTrue(userService.getCurrentUser().isPresent());
+        assertNotNull(UserSession.getCurrentUser());
         assertEquals(username, userService.getCurrentUser().get().getUsername());
 
+        tidyUp(username);
+    }
+
+    @Test
+    @Order(3)
+    void testChangePasswordSuccess() throws SQLException {
+        String username = "change_pass_user_" + System.currentTimeMillis();
+        userService.register(username, "old_pass", "Change Pass User");
+
+        userService.login(username, "old_pass");
+        
+        userService.changePassword("old_pass", "new_pass");
+        
+        // Verify password changed and user can login with new password
+        userService.logout();
+        assertEquals("SUCCESS", userService.login(username, "new_pass"));
+        
         tidyUp(username);
     }
 
     // --- SAD PATHS ---
 
     @Test
-    @Order(3)
+    @Order(4)
     void testRegisterFailDueToDuplicateUsername() {
         String username = "duplicate_user_" + System.currentTimeMillis();
 
@@ -89,10 +107,12 @@ public class UserServiceTest {
 
         assertTrue(exception.getMessage().contains("Username is already used"),
                 "Message should mention duplicate username");
+                
+        try { tidyUp(username); } catch (SQLException e) { e.printStackTrace(); }
     }
 
     @Test
-    @Order(4)
+    @Order(5)
     void testRegisterRollback() throws SQLException {
         String fullName = "rollback_user_" + System.currentTimeMillis();
 
@@ -106,7 +126,7 @@ public class UserServiceTest {
     }
 
     @Test
-    @Order(5)
+    @Order(6)
     void testLoginFailWrongPassword() {
         String username = "wrong_pass_user"+System.currentTimeMillis();
         userService.register(username, "correct_pass", "User Test");
@@ -115,15 +135,19 @@ public class UserServiceTest {
 
         assertEquals("FAILED", result);
         assertFalse(userService.getCurrentUser().isPresent(), "Session should be empty");
+        
+        try { tidyUp(username); } catch (SQLException e) { e.printStackTrace(); }
     }
 
     @Test
-    @Order(6)
+    @Order(7)
     void testChangePasswordFail() {
         String username = "change_pass_user"+System.currentTimeMillis();
         userService.register(username, "old_pass", "User Test");
         userService.login(username, "old_pass");
 
         assertThrows(RuntimeException.class, () -> userService.changePassword("wrong_old_pass", "new_pass"));
+        
+        try { tidyUp(username); } catch (SQLException e) { e.printStackTrace(); }
     }
 }
