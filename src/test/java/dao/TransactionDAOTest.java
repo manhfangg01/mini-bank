@@ -29,35 +29,38 @@ public class TransactionDAOTest {
     private static TransactionDAOImpl transactionDAO;
     private static AccountDAOImpl accountDAO;
     private static UserDAOImpl userDAO;
-
     private static Connection connection;
-    private static User senderUser;
-    private static User receiverUser;
-    private static Account senderAcc;
-    private static Account receiverAcc;
-    private static Transaction testTransaction;
+
+    private Account senderAcc;
+    private Account receiverAcc;
+    private Transaction testTransaction;
 
     @BeforeAll
-    static void setup() throws SQLException {
+    static void init() throws SQLException {
         connection = DBConnection.getConnection();
         transactionDAO = new TransactionDAOImpl(connection);
         accountDAO = new AccountDAOImpl(connection);
         userDAO = new UserDAOImpl(connection);
+    }
 
-        senderUser = User.builder()
-                             .username("sender_" + System.currentTimeMillis())
-                             .passwordHash(PasswordUtil.hashPassword("123456"))
-                             .fullName("Sender User")
-                             .createdAt(LocalDateTime.now())
-                             .build();
+    @BeforeEach
+    void setup() throws SQLException {
+        connection.setAutoCommit(false);
+
+        User senderUser = User.builder()
+                                  .username("sender_" + System.currentTimeMillis())
+                                  .passwordHash(PasswordUtil.hashPassword("123456"))
+                                  .fullName("Sender User")
+                                  .createdAt(LocalDateTime.now())
+                                  .build();
         userDAO.insert(senderUser);
 
-        receiverUser = User.builder()
-                               .username("receiver_" + System.currentTimeMillis())
-                               .passwordHash(PasswordUtil.hashPassword("123456"))
-                               .fullName("Receiver User")
-                               .createdAt(LocalDateTime.now())
-                               .build();
+        User receiverUser = User.builder()
+                                    .username("receiver_" + System.currentTimeMillis())
+                                    .passwordHash(PasswordUtil.hashPassword("123456"))
+                                    .fullName("Receiver User")
+                                    .createdAt(LocalDateTime.now())
+                                    .build();
         userDAO.insert(receiverUser);
 
         senderAcc = Account.builder()
@@ -88,14 +91,27 @@ public class TransactionDAOTest {
                                   .message("transfer from user 1 to user 2")
                                   .createdAt(LocalDateTime.now())
                                   .build();
+        transactionDAO.insert(testTransaction);
+    }
+
+    @AfterEach
+    void clear() throws SQLException {
+        if (connection != null && !connection.isClosed()) {
+            connection.rollback();
+        }
+    }
+
+    @AfterAll
+    static void close() throws SQLException {
+        if (connection != null && !connection.isClosed()) {
+            connection.close();
+        }
     }
 
     @Test
     @Order(1)
     void testInsertTransaction() {
-        Transaction result = transactionDAO.insert(testTransaction);
-        assertNotNull(result.getId());
-        assertEquals(testTransaction.getId(), result.getId());
+        assertNotNull(testTransaction.getId());
     }
 
     @Test
@@ -111,7 +127,7 @@ public class TransactionDAOTest {
     void testFindBySenderId() {
         List<Transaction> transactions = transactionDAO.findBySenderId(senderAcc.getId());
         assertFalse(transactions.isEmpty());
-        assertEquals(testTransaction.getId(), transactions.getFirst().getId());
+        assertTrue(transactions.stream().anyMatch(t -> t.getId().equals(testTransaction.getId())));
     }
 
     @Test
@@ -119,7 +135,7 @@ public class TransactionDAOTest {
     void testFindByReceiverId() {
         List<Transaction> transactions = transactionDAO.findByReceiverId(receiverAcc.getId());
         assertFalse(transactions.isEmpty());
-        assertEquals(testTransaction.getId(), transactions.getFirst().getId());
+        assertTrue(transactions.stream().anyMatch(t -> t.getId().equals(testTransaction.getId())));
     }
 
     @Test
@@ -132,8 +148,8 @@ public class TransactionDAOTest {
     @Test
     @Order(6)
     void testFindByType() {
-        List<Transaction> pendingTxs = transactionDAO.findByType(TransactionType.TRANSFER);
-        assertTrue(pendingTxs.stream().anyMatch(t -> t.getId().equals(testTransaction.getId())));
+        List<Transaction> transferTxs = transactionDAO.findByType(TransactionType.TRANSFER);
+        assertTrue(transferTxs.stream().anyMatch(t -> t.getId().equals(testTransaction.getId())));
     }
 
     @Test
@@ -145,7 +161,7 @@ public class TransactionDAOTest {
 
     @Test
     @Order(8)
-    void testUpdateTransactionStatus() {
+    void testUpdateTransaction() {
         testTransaction.setStatus(TransactionStatus.SUCCESS);
         testTransaction.setMessage("complete transaction");
         transactionDAO.update(testTransaction);
@@ -168,17 +184,5 @@ public class TransactionDAOTest {
         transactionDAO.delete(testTransaction.getId());
         Optional<Transaction> deleted = transactionDAO.findById(testTransaction.getId());
         assertFalse(deleted.isPresent());
-    }
-
-    @AfterAll
-    static void tearDown() throws SQLException {
-        if (senderAcc != null) accountDAO.delete(senderAcc.getId());
-        if (receiverAcc != null) accountDAO.delete(receiverAcc.getId());
-        if (senderUser != null) userDAO.delete(senderUser.getId());
-        if (receiverUser != null) userDAO.delete(receiverUser.getId());
-
-        if (connection != null && !connection.isClosed()) {
-            connection.close();
-        }
     }
 }

@@ -24,15 +24,21 @@ public class AccountDAOTest {
 
     private static AccountDAOImpl accountDAO;
     private static UserDAOImpl userDAO;
-    private static Account testAccount;
-    private static User owner;
     private static Connection connection;
 
+    private User owner;
+    private Account testAccount;
+
     @BeforeAll
-    static void setup() throws SQLException {
+    static void init() throws SQLException {
         connection = DBConnection.getConnection();
         accountDAO = new AccountDAOImpl(connection);
         userDAO = new UserDAOImpl(connection);
+    }
+
+    @BeforeEach
+    void setup() throws SQLException {
+        connection.setAutoCommit(false);
 
         owner = User.builder()
                         .username("owner_" + System.currentTimeMillis())
@@ -40,7 +46,6 @@ public class AccountDAOTest {
                         .fullName("Account Owner")
                         .createdAt(LocalDateTime.now())
                         .build();
-
         userDAO.insert(owner);
 
         testAccount = Account.builder()
@@ -50,13 +55,28 @@ public class AccountDAOTest {
                               .status(AccountStatus.ACTIVE)
                               .createdAt(LocalDateTime.now())
                               .build();
+        accountDAO.insert(testAccount);
+    }
+
+    @AfterEach
+    void clear() throws SQLException {
+        if (connection != null && !connection.isClosed()) {
+            connection.rollback();
+        }
+    }
+
+    @AfterAll
+    static void close() throws SQLException {
+        if (connection != null && !connection.isClosed()) {
+            connection.close();
+        }
     }
 
     @Test
     @Order(1)
-    void testCreateAccount() {
-        accountDAO.insert(testAccount);
-        assertNotNull(testAccount.getId(), "Account ID should be set after creation");
+    void testInsertAccount() {
+        assertNotNull(testAccount.getId());
+        assertTrue(testAccount.getId() > 0);
     }
 
     @Test
@@ -70,9 +90,22 @@ public class AccountDAOTest {
     @Test
     @Order(3)
     void testFindByUserId() {
-        Optional<Account> found = accountDAO.findByUserId(owner.getId());
-        assertTrue(found.isPresent());
-        assertEquals(owner.getId(), found.get().getUserId());
+        List<Account> accounts = accountDAO.findByUserId(owner.getId());
+        assertFalse(accounts.isEmpty());
+        assertEquals(1, accounts.size());
+        assertEquals(testAccount.getId(), accounts.getFirst().getId());
+
+        Account secondAccount = Account.builder()
+                                        .userId(owner.getId())
+                                        .accountNumber("ACC2_" + System.currentTimeMillis())
+                                        .balance(BigDecimal.ZERO)
+                                        .status(AccountStatus.ACTIVE)
+                                        .createdAt(LocalDateTime.now())
+                                        .build();
+        accountDAO.insert(secondAccount);
+
+        List<Account> updatedAccounts = accountDAO.findByUserId(owner.getId());
+        assertTrue(updatedAccounts.size() >= 2);
     }
 
     @Test
@@ -86,45 +119,48 @@ public class AccountDAOTest {
     @Test
     @Order(5)
     void testFindByStatus() {
-        List<Account> activeAccounts = accountDAO.findByStatus(AccountStatus.ACTIVE);
-        assertFalse(activeAccounts.isEmpty());
-        assertTrue(activeAccounts.stream().anyMatch(acc -> Objects.equals(acc.getId(), testAccount.getId())));
+        List<Account> actives = accountDAO.findByStatus(AccountStatus.ACTIVE);
+        assertFalse(actives.isEmpty());
+        assertTrue(actives.stream().anyMatch(a -> Objects.equals(a.getId(), testAccount.getId())));
+
+        List<Account> locked = accountDAO.findByStatus(AccountStatus.LOCKED);
+        assertNotNull(locked);
     }
 
     @Test
     @Order(6)
-    void testUpdateAccount() {
-        testAccount.setBalance(new BigDecimal("5000.50"));
-        testAccount.setStatus(AccountStatus.LOCKED);
-        accountDAO.update(testAccount);
-
-        Account updated = accountDAO.findById(testAccount.getId()).orElseThrow();
-        assertEquals(0, new BigDecimal("5000.50").compareTo(updated.getBalance()));
-        assertEquals(AccountStatus.LOCKED, updated.getStatus());
+    void testFindAll() {
+        List<Account> all = accountDAO.findAll();
+        assertFalse(all.isEmpty());
     }
 
     @Test
     @Order(7)
-    void testFindAll() {
-        List<Account> accounts = accountDAO.findAll();
-        assertFalse(accounts.isEmpty(), "Account list should not be empty");
+    void testUpdateAccount() {
+        BigDecimal newBalance = new BigDecimal("9999.99");
+        testAccount.setBalance(newBalance);
+        testAccount.setStatus(AccountStatus.LOCKED);
+
+        accountDAO.update(testAccount);
+
+        Account updated = accountDAO.findById(testAccount.getId()).orElseThrow();
+        assertEquals(0, newBalance.compareTo(updated.getBalance()));
+        assertEquals(AccountStatus.LOCKED, updated.getStatus());
     }
 
     @Test
     @Order(8)
     void testDeleteAccount() {
         accountDAO.delete(testAccount.getId());
-        Optional<Account> deleted = accountDAO.findById(testAccount.getId());
-        assertFalse(deleted.isPresent(), "Account should be deleted");
+        Optional<Account> found = accountDAO.findById(testAccount.getId());
+        assertFalse(found.isPresent());
     }
 
-    @AfterAll
-    static void tearDown() throws SQLException {
-        if (owner != null && owner.getId() > 0) {
-            userDAO.delete(owner.getId());
-        }
-        if (connection != null && !connection.isClosed()) {
-            connection.close();
-        }
+    @Test
+    @Order(9)
+    void testDeleteByUserId() {
+        accountDAO.deleteByUserId(owner.getId());
+        List<Account> accounts = accountDAO.findByUserId(owner.getId());
+        assertTrue(accounts.isEmpty());
     }
 }

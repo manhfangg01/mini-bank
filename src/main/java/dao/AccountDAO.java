@@ -9,10 +9,11 @@ import java.util.Optional;
 public interface AccountDAO {
         Account insert(Account account);
         Optional<Account> findById(int id);
-        Optional<Account> findByUserId(int userId);
+        List<Account> findByUserId(int userId);
         Optional<Account> findByAccountNumber(String accountNumber);
         List<Account> findAll();
         List<Account> findByStatus(AccountStatus status);
         void update(Account account);
         void delete(int id);
+        void deleteByUserId(int userId);
 }

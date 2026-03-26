@@ -63,17 +63,20 @@ public class AccountDAOImpl implements AccountDAO {
     }
 
     @Override
-    public Optional<Account> findByUserId(int userId) {
+    public List<Account> findByUserId(int userId) {
+        List<Account> accounts = new ArrayList<>();
         String sql = "SELECT * FROM accounts WHERE user_id = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(mapAccount(rs));
+                while (rs.next()){
+                    accounts.add(mapAccount(rs));
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Database error during query account by user ID", e);
         }
-        return Optional.empty();
+        return accounts;
     }
 
     @Override
@@ -147,6 +150,17 @@ public class AccountDAOImpl implements AccountDAO {
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Database error during account delete", e);
+        }
+    }
+
+    @Override
+    public void deleteByUserId(int userId) {
+        String sql = "DELETE FROM accounts WHERE user_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Database error during delete accounts by user ID", e);
         }
     }
 

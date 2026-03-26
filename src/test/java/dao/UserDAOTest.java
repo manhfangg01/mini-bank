@@ -16,13 +16,18 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class UserDAOTest {
     private static UserDAOImpl userDAO;
-    private static User testUser;
     private static Connection connection;
+    private User testUser;
 
     @BeforeAll
-    static void setup() throws SQLException {
+    static void init() throws SQLException {
         connection = DBConnection.getConnection();
         userDAO = new UserDAOImpl(connection);
+    }
+
+    @BeforeEach
+    void setup() throws SQLException {
+        connection.setAutoCommit(false);
 
         testUser = User.builder()
                            .username("testuser_" + System.currentTimeMillis())
@@ -30,29 +35,35 @@ public class UserDAOTest {
                            .fullName("Nguyen Test")
                            .createdAt(LocalDateTime.now())
                            .build();
+
+        userDAO.insert(testUser);
+    }
+
+    @AfterEach
+    void clear() throws SQLException {
+        if (connection != null && !connection.isClosed()) {
+            connection.rollback();
+        }
     }
 
     @AfterAll
-    static void tearDown() throws SQLException {
+    static void close() throws SQLException {
         if (connection != null && !connection.isClosed()) {
-             connection.close();
+            connection.close();
         }
     }
 
     @Test
     @Order(1)
-    void testCreateUser() {
-        User savedUser = userDAO.insert(testUser);
-
-        assertNotNull(savedUser.getId(), "ID should be set after creation");
-        testUser.setId(savedUser.getId());
+    void testInsertUser() {
+        assertNotNull(testUser.getId());
     }
 
     @Test
     @Order(2)
     void testFindById() {
         Optional<User> found = userDAO.findById(testUser.getId());
-        assertTrue(found.isPresent(), "User should be found by ID");
+        assertTrue(found.isPresent());
         assertEquals(testUser.getUsername(), found.get().getUsername());
     }
 
@@ -60,7 +71,7 @@ public class UserDAOTest {
     @Order(3)
     void testFindByUserName() {
         Optional<User> found = userDAO.findByUsername(testUser.getUsername());
-        assertTrue(found.isPresent(), "User should be found by username");
+        assertTrue(found.isPresent());
         assertEquals(testUser.getId(), found.get().getId());
     }
 
@@ -68,7 +79,7 @@ public class UserDAOTest {
     @Order(4)
     void testFindByFullName() {
         Optional<User> found = userDAO.findByFullName("Nguyen Test");
-        assertTrue(found.isPresent(), "User should be found by full name");
+        assertTrue(found.isPresent());
         assertTrue(found.get().getFullName().contains("Nguyen Test"));
     }
 
@@ -78,15 +89,14 @@ public class UserDAOTest {
         testUser.setFullName("Nguyen Updated");
         userDAO.update(testUser);
 
-        Optional<User> updatedOpt = userDAO.findById(testUser.getId());
-        assertTrue(updatedOpt.isPresent());
-        assertEquals("Nguyen Updated", updatedOpt.get().getFullName());
+        User updated = userDAO.findById(testUser.getId()).orElseThrow();
+        assertEquals("Nguyen Updated", updated.getFullName());
     }
 
     @Test
     @Order(6)
     void testFindAllUser() {
-        assertFalse(userDAO.findAll().isEmpty(), "User list should not be empty");
+        assertFalse(userDAO.findAll().isEmpty());
     }
 
     @Test
@@ -94,6 +104,6 @@ public class UserDAOTest {
     void testDeleteUser() {
         userDAO.delete(testUser.getId());
         Optional<User> deleted = userDAO.findById(testUser.getId());
-        assertFalse(deleted.isPresent(), "User should be deleted from database");
+        assertFalse(deleted.isPresent());
     }
 }
