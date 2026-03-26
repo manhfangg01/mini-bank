@@ -12,7 +12,7 @@ create table users(
 
 create table accounts(
                          id int primary key auto_increment,
-                         user_id int unique not null, -- user(1) - account(1)
+                         user_id int not null, -- user(1) - account(1)
                          account_number char(20) not null,
                          balance decimal(15,2) default 0.00,
                          status varchar(20) default 'ACTIVE', -- ACTIVE, LOCKED, CLOSED
